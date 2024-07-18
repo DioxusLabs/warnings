@@ -1,0 +1,14 @@
+[package]
+name = "warnings"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pin-project = "1"
+warnings-macro = { path = "./warnings-macro" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[workspace]
+members = ["./warnings-macro"]
