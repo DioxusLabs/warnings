@@ -13,7 +13,7 @@ pub trait Warning: 'static {
         Self::ID.if_enabled(item)
     }
 
-    fn allow(item: impl FnOnce()) {
+    fn allow<O>(item: impl FnOnce() -> O) -> O {
         allow::<Self, _>(item)
     }
 
