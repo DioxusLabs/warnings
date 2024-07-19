@@ -33,6 +33,12 @@ pub fn warning(_: TokenStream, input: TokenStream) -> TokenStream {
 
     let vis = &input.vis;
 
+    let (impl_generics, ty_generics, where_clause) = input.sig.generics.split_for_impl();
+    let generics = &input.sig.generics.params;
+    let phantom_data = (!input.sig.generics.params.is_empty() ) .then(||{
+        quote!(PhantomData(std::marker::PhantomData #ty_generics))
+    });
+
     // Hand the resulting function body back to the compiler.
     TokenStream::from(quote! {
         #[allow(non_camel_case_types)]
@@ -41,21 +47,25 @@ pub fn warning(_: TokenStream, input: TokenStream) -> TokenStream {
         mod #private_mod {
             use super::*;
 
-            pub(crate) enum __Callable {
+            pub(crate) enum __Callable<#generics> #where_clause {
                 #[allow(non_camel_case_types)]
                 #fn_name,
+                #phantom_data
             }
 
-            impl std::ops::Deref for __Callable {
+            impl #impl_generics  __Callable #ty_generics #where_clause {
+                fn __run_if_enabled(#(#argument_idents: #argument_types),*) {
+                    <#fn_name as warnings::Warning>::ID.if_enabled(|| {
+                        #input
+                        #fn_name(#(#argument_idents),*);
+                    });
+                }
+            }
+
+            impl #impl_generics std::ops::Deref for __Callable #ty_generics #where_clause {
                 type Target = fn(#(#argument_types),*);
                 fn deref(&self) -> &Self::Target {
-                    fn __run_if_enabled(#(#argument_idents: #argument_types),*) {
-                        <#fn_name as warnings::Warning>::ID.if_enabled(|| {
-                            #input
-                            #fn_name(#(#argument_idents),*);
-                        });
-                    }
-                    &(__run_if_enabled as fn(#(#argument_types),*))
+                    &(Self::__run_if_enabled as fn(#(#argument_types),*))
                 }
             }
         }

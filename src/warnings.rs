@@ -1,11 +1,10 @@
 use std::{
-    any::{TypeId},
+    any::TypeId,
     cell::RefCell,
     future::Future,
 };
 
 use pin_project::pin_project;
-use warnings_macro::warning;
 
 pub trait Warning: 'static {
     const ID: WarningId;
