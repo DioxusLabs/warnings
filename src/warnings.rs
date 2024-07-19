@@ -5,61 +5,37 @@ use std::{
 };
 
 use pin_project::pin_project;
-// #[lint]
-// fn my_lint() {
-//     // tracing::warn!("warning");
-// }
 
-// fn main() {
-//     #[lints::allow(my_lint)]
-//     syntax.await;
-// }
+pub trait Warning {
+    const ID: WarningId;
 
-#[test]
-fn warning_guard() {
-    fn lint() {}
-    let warning = Warning::new(&lint);
-    {
-        let _guard = Allow::new(warning);
-        assert!(!warning.enabled());
+    fn enabled() -> bool {
+        Self::ID.enabled()
     }
-    assert!(warning.enabled());
-}
 
-#[cfg(test)]
-#[tokio::test]
-async fn allow_future() {
-    fn lint() {}
-    let warning = Warning::new(&lint);
-    let assert_future_enabled = async {
-        let mut poll_count = 0;
-        std::future::poll_fn(|cx| {
-            assert!(!warning.enabled());
-            match poll_count {
-                ..=5 => {
-                    poll_count += 1;
-                    cx.waker().wake_by_ref();
-                    std::task::Poll::Pending
-                }
-                6.. => std::task::Poll::Ready(()),
-            }
-        })
-        .await;
-    };
-    let future = AllowFuture::new(assert_future_enabled, warning);
-    future.await;
-    assert!(warning.enabled());
+    fn if_enabled(item: impl FnOnce()) {
+        Self::ID.if_enabled(item)
+    }
+
+    fn allow(item: impl FnOnce()) {
+        allow::<Self, _>(item)
+    }
+
+    fn allow_async<F: Future>(future: F) -> AllowFuture<F> {
+        AllowFuture::new(future, Self::ID)
+    }
 }
 
 #[derive(Clone, Copy)]
-pub struct Warning {
+pub struct WarningId {
     #[cfg(debug_assertions)]
     type_id: fn() -> TypeId,
 }
 
-impl Warning {
+impl WarningId {
     #[allow(unused)]
-    pub const fn new<T: 'static>(lint: &T) -> Self {
+    #[doc(hidden)]
+    pub const fn new<T: Any + 'static>(lint: &T) -> Self {
         Self {
             #[cfg(debug_assertions)]
             type_id: std::any::TypeId::of::<T>,
@@ -82,20 +58,21 @@ impl Warning {
 
 #[cfg(debug_assertions)]
 thread_local! {
-    static ALLOW_STACK: RefCell<Vec<Warning>> = const { RefCell::new(Vec::new()) };
+    static ALLOW_STACK: RefCell<Vec<WarningId>> = const { RefCell::new(Vec::new()) };
 }
 
 pub struct Allow {
-    warning: Warning,
+    _private: (),
 }
 
 impl Allow {
-    pub fn new(warning: Warning) -> Self {
+    #[allow(unused)]
+    pub fn new(warning: WarningId) -> Self {
         #[cfg(debug_assertions)]
         ALLOW_STACK.with(|stack| {
             stack.borrow_mut().push(warning);
         });
-        Self { warning }
+        Self { _private: () }
     }
 }
 
@@ -108,16 +85,27 @@ impl Drop for Allow {
     }
 }
 
+#[test]
+fn warning_guard() {
+    fn lint() {}
+    let warning = WarningId::new(&lint);
+    {
+        let _guard = Allow::new(warning);
+        assert!(!warning.enabled());
+    }
+    assert!(warning.enabled());
+}
+
 #[pin_project]
 pub struct AllowFuture<F> {
     #[pin]
     future: F,
     #[allow(unused)]
-    warning: Warning,
+    warning: WarningId,
 }
 
 impl<F> AllowFuture<F> {
-    pub fn new(future: F, warning: Warning) -> Self {
+    pub fn new(future: F, warning: WarningId) -> Self {
         Self { future, warning }
     }
 }
@@ -136,20 +124,45 @@ impl<F: Future> Future for AllowFuture<F> {
     }
 }
 
-pub fn allow<O>(lint: &impl Any, item: impl FnOnce() -> O) -> O {
+pub fn allow<W: Warning + ?Sized, O>(item: impl FnOnce() -> O) -> O {
     #[cfg(debug_assertions)]
-    let _gaurd = Allow::new(Warning::new(lint));
+    let _gaurd = Allow::new(W::ID);
     item()
 }
 
 pub trait AllowFutureExt: Future {
     /// Allow a lint while a future is running
-    fn allow(self, lint: &impl Any) -> AllowFuture<Self>
+    fn allow<W: Warning + ?Sized>(self) -> AllowFuture<Self>
     where
         Self: Sized,
     {
-        AllowFuture::new(self, Warning::new(lint))
+        AllowFuture::new(self, W::ID)
     }
 }
 
 impl<F: Future> AllowFutureExt for F {}
+
+#[cfg(test)]
+#[tokio::test]
+async fn allow_future() {
+    fn lint() {}
+    let warning = WarningId::new(&lint);
+    let assert_future_enabled = async {
+        let mut poll_count = 0;
+        std::future::poll_fn(|cx| {
+            assert!(!warning.enabled());
+            match poll_count {
+                ..=5 => {
+                    poll_count += 1;
+                    cx.waker().wake_by_ref();
+                    std::task::Poll::Pending
+                }
+                6.. => std::task::Poll::Ready(()),
+            }
+        })
+        .await;
+    };
+    let future = AllowFuture::new(assert_future_enabled, warning);
+    future.await;
+    assert!(warning.enabled());
+}
