@@ -40,16 +40,19 @@ pub fn warning(_: TokenStream, input: TokenStream) -> TokenStream {
             GenericParam::Type(ty) => {
                 let ty = &ty.ident;
                 quote!(#ty)
-            },
+            }
             GenericParam::Lifetime(lifetime) => quote!(&#lifetime ()),
             GenericParam::Const(_) => quote!(()),
         });
         quote!(PhantomData(std::marker::PhantomData<(#(#ty_generics_tuple),*)>))
     });
 
+    let attrs = &input.attrs;
+
     // Hand the resulting function body back to the compiler.
     TokenStream::from(quote! {
         #[allow(non_camel_case_types)]
+        #(#attrs)*
         #vis struct #fn_name {}
 
         mod #private_mod {
