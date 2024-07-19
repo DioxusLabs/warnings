@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, FnArg, ItemFn};
+use syn::{parse_macro_input, FnArg, GenericParam, ItemFn};
 
 /// Turns a function into a warning that is only called if the lint is enabled.
 #[proc_macro_attribute]
@@ -35,8 +35,17 @@ pub fn warning(_: TokenStream, input: TokenStream) -> TokenStream {
 
     let (impl_generics, ty_generics, where_clause) = input.sig.generics.split_for_impl();
     let generics = &input.sig.generics.params;
-    let phantom_data = (!input.sig.generics.params.is_empty())
-        .then(|| quote!(PhantomData(std::marker::PhantomData #ty_generics)));
+    let phantom_data = (!input.sig.generics.params.is_empty()).then(|| {
+        let ty_generics_tuple = input.sig.generics.params.iter().map(|param| match param {
+            GenericParam::Type(ty) => {
+                let ty = &ty.ident;
+                quote!(#ty)
+            },
+            GenericParam::Lifetime(lifetime) => quote!(&#lifetime ()),
+            GenericParam::Const(_) => quote!(()),
+        });
+        quote!(PhantomData(std::marker::PhantomData<(#(#ty_generics_tuple),*)>))
+    });
 
     // Hand the resulting function body back to the compiler.
     TokenStream::from(quote! {
