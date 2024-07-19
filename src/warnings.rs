@@ -1,12 +1,13 @@
 use std::{
-    any::{Any, TypeId},
+    any::{TypeId},
     cell::RefCell,
     future::Future,
 };
 
 use pin_project::pin_project;
+use warnings_macro::warning;
 
-pub trait Warning {
+pub trait Warning: 'static {
     const ID: WarningId;
 
     fn enabled() -> bool {
@@ -33,12 +34,12 @@ pub struct WarningId {
 }
 
 impl WarningId {
+    /// Get the ID of a warning
     #[allow(unused)]
-    #[doc(hidden)]
-    pub const fn new<T: Any + 'static>(lint: &T) -> Self {
+    pub const fn of<W: Warning + ?Sized>() -> Self {
         Self {
             #[cfg(debug_assertions)]
-            type_id: std::any::TypeId::of::<T>,
+            type_id: std::any::TypeId::of::<W>,
         }
     }
 
@@ -87,8 +88,13 @@ impl Drop for Allow {
 
 #[test]
 fn warning_guard() {
-    fn lint() {}
-    let warning = WarningId::new(&lint);
+    struct Lint {}
+
+    impl Warning for Lint {
+        const ID: WarningId = WarningId::of::<Lint>();
+    }
+
+    let warning = WarningId::of::<Lint>();
     {
         let _guard = Allow::new(warning);
         assert!(!warning.enabled());
@@ -145,8 +151,13 @@ impl<F: Future> AllowFutureExt for F {}
 #[cfg(test)]
 #[tokio::test]
 async fn allow_future() {
-    fn lint() {}
-    let warning = WarningId::new(&lint);
+    struct Lint {}
+
+    impl Warning for Lint {
+        const ID: WarningId = WarningId::of::<Lint>();
+    }
+
+    let warning = WarningId::of::<Lint>();
     let assert_future_enabled = async {
         let mut poll_count = 0;
         std::future::poll_fn(|cx| {

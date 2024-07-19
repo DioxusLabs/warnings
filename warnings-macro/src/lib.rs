@@ -50,7 +50,7 @@ pub fn warning(_: TokenStream, input: TokenStream) -> TokenStream {
                 type Target = fn(#(#argument_types),*);
                 fn deref(&self) -> &Self::Target {
                     fn __run_if_enabled(#(#argument_idents: #argument_types),*) {
-                        #fn_name::ID.if_enabled(|| {
+                        <#fn_name as warnings::Warning>::ID.if_enabled(|| {
                             #input
                             #fn_name(#(#argument_idents),*);
                         });
@@ -62,7 +62,7 @@ pub fn warning(_: TokenStream, input: TokenStream) -> TokenStream {
         #vis use #private_mod::__Callable::*;
 
         impl warnings::Warning for #fn_name {
-            const ID: warnings::WarningId = warnings::WarningId::new(&#fn_name);
+            const ID: warnings::WarningId = warnings::WarningId::of::<#fn_name>();
         }
     })
 }

@@ -9,6 +9,7 @@ warnings-macro = { path = "./warnings-macro" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
+warnings = { path = "." }
 
 [workspace]
 members = ["./warnings-macro"]
