@@ -1,8 +1,4 @@
-use std::{
-    any::TypeId,
-    cell::RefCell,
-    future::Future,
-};
+use std::{any::TypeId, cell::RefCell, future::Future};
 
 use pin_project::pin_project;
 

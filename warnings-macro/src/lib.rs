@@ -35,9 +35,8 @@ pub fn warning(_: TokenStream, input: TokenStream) -> TokenStream {
 
     let (impl_generics, ty_generics, where_clause) = input.sig.generics.split_for_impl();
     let generics = &input.sig.generics.params;
-    let phantom_data = (!input.sig.generics.params.is_empty() ) .then(||{
-        quote!(PhantomData(std::marker::PhantomData #ty_generics))
-    });
+    let phantom_data = (!input.sig.generics.params.is_empty())
+        .then(|| quote!(PhantomData(std::marker::PhantomData #ty_generics)));
 
     // Hand the resulting function body back to the compiler.
     TokenStream::from(quote! {
