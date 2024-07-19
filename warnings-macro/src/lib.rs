@@ -66,7 +66,7 @@ pub fn warning(_: TokenStream, input: TokenStream) -> TokenStream {
 
             impl #impl_generics  __Callable #ty_generics #where_clause {
                 fn __run_if_enabled(#(#argument_idents: #argument_types),*) {
-                    <#fn_name as warnings::Warning>::ID.if_enabled(|| {
+                    <#fn_name as ::warnings::Warning>::ID.if_enabled(|| {
                         #input
                         #fn_name(#(#argument_idents),*);
                     });
@@ -82,8 +82,8 @@ pub fn warning(_: TokenStream, input: TokenStream) -> TokenStream {
         }
         #vis use #private_mod::__Callable::*;
 
-        impl warnings::Warning for #fn_name {
-            const ID: warnings::WarningId = warnings::WarningId::of::<#fn_name>();
+        impl ::warnings::Warning for #fn_name {
+            const ID: ::warnings::WarningId = ::warnings::WarningId::of::<#fn_name>();
         }
     })
 }
