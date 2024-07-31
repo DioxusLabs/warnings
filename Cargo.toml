@@ -2,6 +2,11 @@
 name = "warnings"
 version = "0.2.0"
 edition = "2021"
+authors = ["Evan Almloff <evanalmloff@gmail.com>"]
+description = "A crate for defining debug only runtime warnings with a way to opt-out"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/dioxuslabs/warnings"
+homepage = "https://dioxuslabs.com" 
 
 [dependencies]
 pin-project = "1"

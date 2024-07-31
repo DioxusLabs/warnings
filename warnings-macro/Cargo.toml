@@ -2,6 +2,11 @@
 name = "warnings-macro"
 version = "0.2.0"
 edition = "2021"
+authors = ["Evan Almloff <evanalmloff@gmail.com>"]
+description = "A macro for defining warnings"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/dioxuslabs/warnings"
+homepage = "https://dioxuslabs.com" 
 
 [lib]
 proc-macro = true
