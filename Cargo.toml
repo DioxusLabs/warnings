@@ -10,7 +10,7 @@ homepage = "https://dioxuslabs.com"
 
 [dependencies]
 pin-project = "1"
-warnings-macro = { path = "./warnings-macro" }
+warnings-macro = { path = "./warnings-macro", version = "0.2.0" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
