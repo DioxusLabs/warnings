@@ -1,4 +1,4 @@
-use std::{any::TypeId, cell::RefCell, future::Future};
+use std::{fmt::Debug, future::Future};
 
 use pin_project::pin_project;
 
@@ -25,7 +25,22 @@ pub trait Warning: 'static {
 #[derive(Clone, Copy)]
 pub struct WarningId {
     #[cfg(debug_assertions)]
-    type_id: fn() -> TypeId,
+    type_id: fn() -> std::any::TypeId,
+    #[cfg(debug_assertions)]
+    name: fn() -> &'static str,
+}
+
+impl Debug for WarningId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut dbg = f.debug_struct("WarningId");
+        #[cfg(debug_assertions)]
+        {
+            dbg.field("type_id", &self.type_id)
+                .field("name", &(self.name)());
+        }
+        dbg.finish()?;
+        Ok(())
+    }
 }
 
 impl WarningId {
@@ -35,13 +50,19 @@ impl WarningId {
         Self {
             #[cfg(debug_assertions)]
             type_id: std::any::TypeId::of::<W>,
+            #[cfg(debug_assertions)]
+            name: std::any::type_name::<W>,
         }
     }
 
     #[allow(unreachable_code)]
     pub fn enabled(&self) -> bool {
         #[cfg(debug_assertions)]
-        return !ALLOW_STACK.with(|stack| stack.borrow().iter().any(|w| w.type_id == self.type_id));
+        return !ALLOW_STACK.with(|stack| {
+            let stack = stack.borrow();
+            tracing::trace!("Checking if warning {self:?} is enabled, stack: {stack:?}");
+            stack.iter().any(|w| (w.type_id)() == (self.type_id)())
+        });
         false
     }
 
@@ -54,7 +75,7 @@ impl WarningId {
 
 #[cfg(debug_assertions)]
 thread_local! {
-    static ALLOW_STACK: RefCell<Vec<WarningId>> = const { RefCell::new(Vec::new()) };
+    static ALLOW_STACK: std::cell::RefCell<Vec<WarningId>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
 pub struct Allow {
